@@ -1,0 +1,96 @@
+-- 1. Department table (dept_no, dept_name, building_name)
+--    - Unique constraint applied on dept_name.
+CREATE TABLE Department (
+    dept_no VARCHAR(10),
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    building_name VARCHAR(50)
+);
+
+-- 2. Instructor table (ins_id, ins_name, dept_no, salary, mob_no)
+--    - NOT NULL constraint applied on ins_name.
+CREATE TABLE Instructor (
+    ins_id VARCHAR(10) PRIMARY KEY,
+    ins_name VARCHAR(100) NOT NULL,
+    dept_no VARCHAR(10),
+    salary NUMERIC(10, 2),
+    mob_no VARCHAR(15)
+);
+
+-- 3. Course table (course_id of INT, title, dept_no, credits)
+CREATE TABLE Course (
+    course_id INTEGER,
+    title VARCHAR(100),
+    dept_no VARCHAR(10),
+    credits NUMERIC(2, 1)
+);
+
+-- 4. Teaches table (teacher_id, course_id, semester, year)
+CREATE TABLE Teaches (
+    teacher_id VARCHAR(10),
+    course_id INTEGER,
+    semester VARCHAR(10),
+    year INTEGER
+);
+
+
+QUERIES
+-- Query 1: Add the primary key in department table.
+ALTER TABLE Department
+ADD PRIMARY KEY (dept_no);
+
+-- Query 2: Add the foreign key in instructor table.
+ALTER TABLE Instructor
+ADD CONSTRAINT fk_instructor_dept
+FOREIGN KEY (dept_no)
+REFERENCES Department(dept_no);
+
+-- Query 3: Modify the table department by adding a column budget.
+ALTER TABLE Department
+ADD COLUMN budget NUMERIC(15, 2);
+
+-- Query 4: Create unique index on mobile number of instructor table.
+CREATE UNIQUE INDEX idx_unique_mob_no ON Instructor (mob_no);
+
+-- Query 5: Remove the Budget from department table.
+ALTER TABLE Department
+DROP COLUMN budget;
+
+-- Query 6: Increase the size of the title field of course relation.
+ALTER TABLE Course
+ALTER COLUMN title TYPE VARCHAR(255);
+
+-- Query 7: Delete the index from the instructor table.
+DROP INDEX idx_unique_mob_no;
+
+-- Query 8: Rename the course table to another table name (Subject).
+ALTER TABLE Course
+RENAME TO Subject;
+Query 9: Create a view by showing an instructor name and title of course they teaches.
+CREATE VIEW instructor_courses AS
+SELECT
+    I.ins_name AS instructor_name,
+    S.title AS course_title
+FROM
+    Instructor I
+JOIN
+    Teaches T ON I.ins_id = T.teacher_id
+JOIN
+    Subject S ON T.course_id = S.course_id
+ORDER BY
+    I.ins_name;
+
+-- Optional: Select from the view to demonstrate its contents
+SELECT * FROM instructor_courses;
+
+-- Query 10: Delete the primary key from the department table.
+-- The CASCADE option automatically drops the dependent foreign key in the Instructor table.
+ALTER TABLE Department
+DROP CONSTRAINT department_pkey CASCADE;
+
+-- Query 11: Delete all records with truncate command.
+-- TRUNCATE is faster than DELETE and resets serial counters (RESTART IDENTITY).
+TRUNCATE TABLE Department, Instructor, Subject, Teaches RESTART IDENTITY CASCADE;
+
+
+
+

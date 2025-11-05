@@ -1,0 +1,146 @@
+MEDICAL DATABASE SQL PRACTICAL QUERIES
+
+
+-- ---------------------------------
+-- 1. TABLE CREATION
+-- ---------------------------------
+
+-- Create Patient table (pat_id, pat_name, date_adm, age, city)
+CREATE TABLE Patient (
+    pat_id INT PRIMARY KEY,
+    pat_name VARCHAR(50) NOT NULL,
+    date_adm DATE,
+    age INT,
+    city VARCHAR(50)
+);
+
+-- Create Doctor table (doc_id, doc_name, qualification, exp, dept_name, city, salary)
+CREATE TABLE Doctor (
+    doc_id INT PRIMARY KEY,
+    doc_name VARCHAR(50) NOT NULL,
+    qualification VARCHAR(50),
+    exp INT, -- Experience in years
+    dept_name VARCHAR(50), -- Department name
+    city VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+-- Create Treats table (doc_id, pat_id, disease)
+CREATE TABLE Treats (
+    doc_id INT,
+    pat_id INT,
+    disease VARCHAR(50),
+    PRIMARY KEY (doc_id, pat_id),
+    FOREIGN KEY (doc_id) REFERENCES Doctor(doc_id),
+    FOREIGN KEY (pat_id) REFERENCES Patient(pat_id)
+);
+
+
+-- ---------------------------------
+-- 2. DATA INSERTION (1)
+-- ---------------------------------
+
+-- Insert records into Patient (at least 5)
+INSERT INTO Patient (pat_id, pat_name, date_adm, age, city) VALUES
+(1, 'Amit Sharma', '2023-10-01', 45, 'Pune');
+INSERT INTO Patient (pat_id, pat_name, date_adm, age, city) VALUES
+(2, 'Bina Singh', '2023-10-05', 62, 'Mumbai');
+INSERT INTO Patient (pat_id, pat_name, date_adm, age, city) VALUES
+(3, 'Chetan Vora', '2023-10-10', 30, 'Delhi');
+INSERT INTO Patient (pat_id, pat_name, date_adm, age, city) VALUES
+(4, 'Deepa Patil', '2023-10-15', 25, 'Pune');
+INSERT INTO Patient (pat_id, pat_name, date_adm, age, city) VALUES
+(5, 'Eshaan Khan', '2023-10-20', 70, 'Bangalore');
+INSERT INTO Patient (pat_id, pat_name, date_adm, age, city) VALUES
+(6, 'Falguni Das', '2023-10-22', 12, 'Mumbai');
+
+-- Insert records into Doctor (at least 5)
+INSERT INTO Doctor (doc_id, doc_name, qualification, exp, dept_name, city, salary) VALUES
+(10, 'Dr. Roy', 'MD, Cardiologist', 15, 'Cardiology', 'Pune', 150000.00);
+INSERT INTO Doctor (doc_id, doc_name, qualification, exp, dept_name, city, salary) VALUES
+(20, 'Dr. Smith', 'DM, Neurologist', 10, 'Neurology', 'Mumbai', 120000.00);
+INSERT INTO Doctor (doc_id, doc_name, qualification, exp, dept_name, city, salary) VALUES
+(30, 'Dr. Alok', 'MBBS, Pediatrician', 5, 'Pediatrics', 'Delhi', 80000.00);
+INSERT INTO Doctor (doc_id, doc_name, qualification, exp, dept_name, city, salary) VALUES
+(40, 'Dr. Priya', 'MD, Oncologist', 12, 'Oncology', 'Hyderabad', 135000.00);
+INSERT INTO Doctor (doc_id, doc_name, qualification, exp, dept_name, city, salary) VALUES
+(50, 'Dr. Sameer', 'MD, General', 8, 'General Medicine', 'Pune', 95000.00);
+INSERT INTO Doctor (doc_id, doc_name, qualification, exp, dept_name, city, salary) VALUES
+(60, 'Dr. Jaya', 'MBBS, General', 20, 'General Medicine', 'Bangalore', 160000.00);
+
+-- Insert records into Treats (at least 5)
+INSERT INTO Treats (doc_id, pat_id, disease) VALUES (10, 1, 'Heart Attack');
+INSERT INTO Treats (doc_id, pat_id, disease) VALUES (20, 2, 'Stroke');
+INSERT INTO Treats (doc_id, pat_id, disease) VALUES (30, 6, 'Fever');
+INSERT INTO Treats (doc_id, pat_id, disease) VALUES (40, 5, 'Cancer');
+INSERT INTO Treats (doc_id, pat_id, disease) VALUES (10, 4, 'Arrhythmia');
+INSERT INTO Treats (doc_id, pat_id, disease) VALUES (20, 3, 'Migraine');
+
+
+-- ---------------------------------
+-- 3. REPORT QUERIES
+-- ---------------------------------
+
+-- 2) List the cities in which either doctors OR patient lives
+SELECT DISTINCT city FROM Doctor
+UNION
+SELECT DISTINCT city FROM Patient;
+
+
+-- 3) Part A: List the cities where BOTH doctors and patients live
+SELECT DISTINCT D.city
+FROM Doctor D
+INNER JOIN Patient P
+  ON D.city = P.city;
+
+-- 3) Part B: List dname, pname and their cities name if they live in the same city.
+SELECT
+    D.doc_name,
+    P.pat_name,
+    D.city AS common_city
+FROM
+    Doctor D
+INNER JOIN
+    Patient P ON D.city = P.city
+ORDER BY
+    D.city, D.doc_name, P.pat_name;
+
+
+-- 4) Find the doctors who have not treated any patient
+SELECT
+    D.doc_name
+FROM
+    Doctor D
+LEFT JOIN
+    Treats T ON D.doc_id = T.doc_id
+WHERE
+    T.pat_id IS NULL;
+
+
+-- 5) a) Display name of doctors and patients as a single column (allowing duplicates)
+SELECT doc_name AS person_name FROM Doctor
+UNION ALL
+SELECT pat_name AS person_name FROM Patient;
+
+
+-- 6) What is the total money collected so far from treatment of patients?
+-- NOTE: This query requires an assumed table for treatment cost as it's missing in the schema.
+/*
+CREATE TABLE Treatment_Cost (pat_id INT PRIMARY KEY, total_fee DECIMAL(10, 2));
+INSERT INTO Treatment_Cost VALUES (1, 50000.00), (2, 45000.00), (3, 5000.00), (4, 25000.00), (5, 75000.00), (6, 3000.00);
+
+SELECT SUM(total_fee) AS total_money_collected
+FROM Treatment_Cost;
+*/
+
+
+-- 7) Find average salary of each department.
+SELECT
+    dept_name,
+    AVG(salary) AS average_salary
+FROM
+    Doctor
+GROUP BY
+    dept_name
+ORDER BY
+    average_salary DESC;

@@ -1,0 +1,125 @@
+
+
+-- ===================================================================================
+-- PHASE 1: INITIAL TABLE CREATION
+-- ===================================================================================
+
+-- 1. Department table (dept_no, dept_name, building_name)
+--    - Unique constraint applied on dept_name.
+CREATE TABLE Department (
+    dept_no VARCHAR(10),
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    building_name VARCHAR(50)
+);
+
+-- 2. Instructor table (ins_id, ins_name, dept_no, salary, mob_no)
+--    - NOT NULL constraint applied on ins_name.
+CREATE TABLE Instructor (
+    ins_id VARCHAR(10), -- Will be PK later
+    ins_name VARCHAR(100) NOT NULL,
+    dept_no VARCHAR(10),
+    salary NUMERIC(10, 2),
+    mob_no VARCHAR(15)
+);
+
+-- 3. Course table (course_id of INT, title, dept_no, credits)
+CREATE TABLE Course (
+    course_id INTEGER,
+    title VARCHAR(100),
+    dept_no VARCHAR(10),
+    credits NUMERIC(2, 1)
+);
+
+-- 4. Teaches table (teacher_id, course_id, semester, year)
+CREATE TABLE Teaches (
+    teacher_id VARCHAR(10),
+    course_id INTEGER,
+    semester VARCHAR(10),
+    year INTEGER
+);
+
+-- ===================================================================================
+-- PHASE 2: EXECUTING THE 11 SPECIFIED QUERIES
+-- ===================================================================================
+
+-- Query 1: Add the primary key in department table.
+ALTER TABLE Department
+ADD PRIMARY KEY (dept_no);
+
+-- Set Primary Key on Instructor for FK consistency
+ALTER TABLE Instructor
+ADD PRIMARY KEY (ins_id);
+
+-- Query 2: Add the foreign key in instructor table.
+ALTER TABLE Instructor
+ADD CONSTRAINT fk_instructor_dept
+FOREIGN KEY (dept_no)
+REFERENCES Department(dept_no);
+
+-- Intermediary: Insert Data required for View operations (Q3-Q6)
+INSERT INTO Department (dept_no, dept_name, building_name) VALUES
+('CS', 'Computer Science', 'Taylor'),
+('EE', 'Electrical Eng.', 'Packard');
+
+INSERT INTO Instructor (ins_id, ins_name, dept_no, salary, mob_no) VALUES
+('101', 'Alice Johnson', 'CS', 85000.00, '5551234567'),
+('102', 'Bob Williams', 'EE', 75000.00, '5557654321');
+
+-- Query 3: Create a view of instructor relation except the salary field.
+CREATE VIEW instructor_basic_info AS
+SELECT ins_id, ins_name, dept_no, mob_no
+FROM Instructor;
+
+-- Optional: Show the view structure
+SELECT 'View created successfully. Now demonstrating DML on the view:';
+SELECT * FROM instructor_basic_info;
+
+-- Query 4: Insert record into instructor table using newly created viewname.
+-- NOTE: This works because the view includes all NOT NULL columns (ins_id is PK, ins_name is NOT NULL).
+INSERT INTO instructor_basic_info (ins_id, ins_name, dept_no, mob_no)
+VALUES ('103', 'Carol Davis', 'CS', '5550009999');
+
+SELECT 'After INSERT via view:' AS Operation;
+SELECT * FROM Instructor;
+
+-- Query 5: Update the department number of particular instructor using update view.
+UPDATE instructor_basic_info
+SET dept_no = 'EE'
+WHERE ins_id = '103';
+
+SELECT 'After UPDATE via view:' AS Operation;
+SELECT * FROM Instructor WHERE ins_id = '103';
+
+-- Query 6: Delete record of particular instructor from instructor table using newly created viewname.
+DELETE FROM instructor_basic_info
+WHERE ins_id = '102';
+
+SELECT 'After DELETE via view:' AS Operation;
+SELECT * FROM Instructor; -- Bob Williams (102) should be gone.
+
+-- Query 7: Delete the last view.
+DROP VIEW instructor_basic_info;
+
+-- Query 8: Create a sequence (or use the AUTO_INCREMENT attribute) on course_id starting with 51
+CREATE SEQUENCE course_id_seq START 51;
+ALTER TABLE Course
+ALTER COLUMN course_id SET DEFAULT nextval('course_id_seq');
+
+SELECT 'Next Course ID will be:' AS Info, nextval('course_id_seq') AS NextValue;
+
+-- Query 9: Create database and show all databases
+-- NOTE: These are psql/system-level commands and cannot run directly in a SQL script.
+-- To CREATE a new database named 'CollegeDB', use:
+--   CREATE DATABASE CollegeDB;
+-- To SHOW all databases in the psql terminal, use:
+--   \l
+
+-- Query 10: Create table and show all table
+-- NOTE: 'SHOW TABLES' is a MySQL command. The PostgreSQL equivalent to list tables is:
+--   \dt (in the psql terminal)
+-- Creating a dummy table to show creation success:
+CREATE TABLE DummyTable (id INT);
+SELECT 'DummyTable created.';
+
+-- Query 11: Delete teaches table
+DROP TABLE Teaches;

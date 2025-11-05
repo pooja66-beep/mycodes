@@ -1,0 +1,96 @@
+CREATE DATABASE Score; 
+USE Score;
+
+CREATE TABLE Stud_Marks (
+    name VARCHAR(20),
+    total_marks INT(5) 
+);
+
+CREATE TABLE Result (
+    Roll_no INT(3) PRIMARY KEY, 
+    Name VARCHAR(20),
+    Class VARCHAR(20) 
+);
+
+INSERT INTO Stud_Marks VALUES('Suresh', 995);  
+INSERT INTO Stud_Marks VALUES('Harish', 865);  
+INSERT INTO Stud_Marks VALUES('Samart', 920);  
+INSERT INTO Stud_Marks VALUES('Mohan', 1000); 
+INSERT INTO Stud_Marks VALUES('Soham', 745);
+
+INSERT INTO Result(Roll_no, Name) VALUES(1, 'Suresh');
+INSERT INTO Result(Roll_no, Name) VALUES(2, 'Harish');
+INSERT INTO Result(Roll_no, Name) VALUES(3, 'Samart');
+INSERT INTO Result(Roll_no, Name) VALUES(4, 'Mohan');
+INSERT INTO Result(Roll_no, Name) VALUES(5, 'Soham');
+
+DELIMITER //
+
+CREATE PROCEDURE proc_Grade (
+    IN r INT,               
+    OUT grade VARCHAR(25)   
+)
+BEGIN
+    DECLARE m INT; 
+
+    
+    SELECT total_marks INTO m 
+    FROM Stud_Marks 
+    WHERE name = (SELECT Name FROM Result WHERE Roll_no = r); 
+
+    -- Determine the grade based on marks and update the Result table
+    IF m <= 1500 AND m >= 990 THEN 
+        SET grade = 'Distinction';
+        UPDATE Result SET Class = 'Distinction' WHERE Roll_no = r; --
+    ELSEIF m <= 989 AND m >= 900 THEN 
+        SET grade = 'First Class';
+        UPDATE Result SET Class = 'First Class' WHERE Roll_no = r; --
+    ELSEIF m <= 899 AND m >= 825 THEN 
+        SET grade = 'Higher Second Class';
+        UPDATE Result SET Class = 'Second Class' WHERE Roll_no = r; --
+    ELSE
+        SET grade = '--'; 
+        UPDATE Result SET Class = '--' WHERE Roll_no = r; --
+    END IF;
+
+END //
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE FUNCTION func_Grade (r INT)
+RETURNS VARCHAR(25) 
+DETERMINISTIC 
+BEGIN
+    DECLARE grade_result VARCHAR(25); 
+
+    
+    CALL proc_Grade(r, grade_result); 
+
+    
+    RETURN grade_result; --
+
+END //
+
+DELIMITER ;
+
+CALL proc_Grade(1, @grade); 
+SELECT @grade;             
+CALL proc_Grade(2, @grade); 
+SELECT @grade;             
+
+
+SELECT * FROM Result;
+
+SELECT func_Grade(3); 
+SELECT func_Grade(4); 
+SELECT func_Grade(5); 
+
+-- Verify the final state of the Result table
+SELECT * FROM Result;
+
+
+
+   
+

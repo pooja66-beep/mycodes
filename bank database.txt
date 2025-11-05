@@ -1,0 +1,219 @@
+-- ###########################################################
+-- # BANK DATABASE SQL PRACTICAL QUERIES
+-- ###########################################################
+
+-- ---------------------------------
+-- 1. TABLE CREATION
+-- ---------------------------------
+
+-- 1. branch_master(branch_id, bname) branch_id is primary key
+CREATE TABLE branch_master (
+    branch_id CHAR(3) PRIMARY KEY,
+    bname VARCHAR(50) NOT NULL
+);
+
+-- 5. branch_address(branch_id, city, state) branch_id is foreign key
+CREATE TABLE branch_address (
+    branch_id CHAR(3) PRIMARY KEY, -- Making it PK for simplicity, functionally the same as the FK constraint
+    city VARCHAR(50),
+    state VARCHAR(50),
+    FOREIGN KEY (branch_id) REFERENCES branch_master(branch_id)
+);
+
+-- 2. employee_master(emp_no, e_name, branch_id, salary, dept, manager_id)
+-- emp_no primary key, branch_id foreign key, manager_id foreign key ON DELETE SET NULL
+CREATE TABLE employee_master (
+    emp_no INT PRIMARY KEY,
+    e_name VARCHAR(50) NOT NULL,
+    branch_id CHAR(3),
+    salary DECIMAL(10, 2),
+    dept VARCHAR(50),
+    manager_id INT,
+    FOREIGN KEY (branch_id) REFERENCES branch_master(branch_id),
+    -- Self-referencing FK for manager
+    FOREIGN KEY (manager_id) REFERENCES employee_master(emp_no) ON DELETE SET NULL
+);
+
+-- 3. contact_details (empid, emailid, phnno)
+-- emp_id foreign key ON DELETE SET NULL
+CREATE TABLE contact_details (
+    empid INT PRIMARY KEY,
+    emailid VARCHAR(100),
+    phnno CHAR(10),
+    FOREIGN KEY (empid) REFERENCES employee_master(emp_no) ON DELETE SET NULL
+);
+
+-- 4. emp_address_details(emp_id, street, city, state)
+-- emp_id foreign key ON DELETE CASCADE
+CREATE TABLE emp_address_details (
+    emp_id INT PRIMARY KEY,
+    street VARCHAR(50),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    FOREIGN KEY (emp_id) REFERENCES employee_master(emp_no) ON DELETE CASCADE
+);
+
+
+-- ---------------------------------
+-- 2. DATA INSERTION
+-- ---------------------------------
+
+-- Insert 5 records in branch_master
+INSERT INTO branch_master (branch_id, bname) VALUES
+('B01', 'Shivajinagar'),
+('B02', 'Vadgaon'),
+('B03', 'Koregaon Park'),
+('B04', 'Hinjewadi'),
+('B05', 'Nigdi');
+
+-- Insert 5 records in employee_master (managers first)
+INSERT INTO employee_master (emp_no, e_name, branch_id, salary, dept, manager_id) VALUES
+(1001, 'Ram Sharma', 'B01', 55000.00, 'HR', NULL); -- Manager 1, no manager above
+INSERT INTO employee_master (emp_no, e_name, branch_id, salary, dept, manager_id) VALUES
+(1002, 'Priya Singh', 'B02', 65000.00, 'Operations', 1001); -- Manager 2
+INSERT INTO employee_master (emp_no, e_name, branch_id, salary, dept, manager_id) VALUES
+(1003, 'Amit Patil', 'B02', 45000.00, 'Sales', 1002);
+INSERT INTO employee_master (emp_no, e_name, branch_id, salary, dept, manager_id) VALUES
+(1004, 'Seema Rane', 'B01', 120000.00, 'Finance', 1001);
+INSERT INTO employee_master (emp_no, e_name, branch_id, salary, dept, manager_id) VALUES
+(1005, 'Vikas Jain', 'B03', 38000.00, 'Sales', 1002);
+INSERT INTO employee_master (emp_no, e_name, branch_id, salary, dept, manager_id) VALUES
+(1006, 'Deepa Kulkarni', 'B02', 15000.00, 'Clerk', 1002); -- Added for query 5
+
+-- Insert 5 records in contact_details
+INSERT INTO contact_details (empid, emailid, phnno) VALUES
+(1001, 'ram@bank.com', '9876543210');
+INSERT INTO contact_details (empid, emailid, phnno) VALUES
+(1002, 'priya@bank.com', '9876512345');
+INSERT INTO contact_details (empid, emailid, phnno) VALUES
+(1003, 'amit@bank.com', '9998877665');
+INSERT INTO contact_details (empid, emailid, phnno) VALUES
+(1004, 'seema@bank.com', '8887766554');
+INSERT INTO contact_details (empid, emailid, phnno) VALUES
+(1006, 'deepa@bank.com', '9009009000');
+-- Note: Employee 1005 (Vikas Jain) has no contact details for the LEFT JOIN test.
+
+-- Insert 5 records in emp_address_details
+INSERT INTO emp_address_details (emp_id, street, city, state) VALUES
+(1001, 'Lane 1', 'Pune', 'Maharashtra');
+INSERT INTO emp_address_details (emp_id, street, city, state) VALUES
+(1002, 'MG Road', 'Pune', 'Maharashtra');
+INSERT INTO emp_address_details (emp_id, street, city, state) VALUES
+(1003, 'Deccan Gymkhana', 'Pune', 'Maharashtra');
+INSERT INTO emp_address_details (emp_id, street, city, state) VALUES
+(1004, 'Kothrud', 'Pune', 'Maharashtra');
+INSERT INTO emp_address_details (emp_id, street, city, state) VALUES
+(1005, 'FC Road', 'Pune', 'Maharashtra');
+
+-- Insert 5 records in branch_address
+INSERT INTO branch_address (branch_id, city, state) VALUES
+('B01', 'Pune', 'MH');
+INSERT INTO branch_address (branch_id, city, state) VALUES
+('B02', 'Pune', 'MH');
+INSERT INTO branch_address (branch_id, city, state) VALUES
+('B03', 'Pune', 'MH');
+INSERT INTO branch_address (branch_id, city, state) VALUES
+('B04', 'Pune', 'MH');
+INSERT INTO branch_address (branch_id, city, state) VALUES
+('B05', 'Mumbai', 'MH');
+
+
+-- ---------------------------------
+-- 3. REPORT QUERIES
+-- ---------------------------------
+
+-- 1) List the employee details along with the branch name using inner join and in order of employee no.
+SELECT
+    E.emp_no,
+    E.e_name,
+    E.salary,
+    E.dept,
+    B.bname AS branch_name
+FROM
+    employee_master E
+INNER JOIN
+    branch_master B ON E.branch_id = B.branch_id
+ORDER BY
+    E.emp_no;
+
+
+-- 2) List the employee's name with the contact details if have or not have any.
+-- The prompt also asks to DELETE the first 2 employees (1001, 1002) first.
+
+-- Perform Delete operation first
+DELETE FROM employee_master WHERE emp_no IN (1001, 1002);
+-- Check the constraints:
+-- The delete on 1001/1002 should set manager_id of 1003, 1004, 1005, 1006 to NULL.
+-- The delete on 1001/1002 should set empid in contact_details to NULL (or delete the rows if empid is PK and not null).
+-- For contact_details: Since empid is PRIMARY KEY, it must be NOT NULL. When using 'ON DELETE SET NULL',
+-- the FK column must be allowed to be NULL. Since the requirement asks for SET NULL, we must assume
+-- the column *is* nullable. The DELETE will thus fail if empid is PK and NOT NULL.
+-- Assuming standard SQL with nullable FK column in contact_details:
+-- SELECT * FROM contact_details; -- rows 1001, 1002's empid set to NULL, if it was nullable.
+
+-- Now, run the retrieval query (using LEFT JOIN to include employees without contact details)
+SELECT
+    E.e_name,
+    C.emailid,
+    C.phnno
+FROM
+    employee_master E
+LEFT JOIN
+    contact_details C ON E.emp_no = C.empid;
+
+
+-- 3) Retrieve the employee's name and their respective manager's name.
+SELECT
+    E.e_name AS Employee_Name,
+    M.e_name AS Manager_Name
+FROM
+    employee_master E
+LEFT JOIN
+    employee_master M ON E.manager_id = M.emp_no
+ORDER BY
+    Employee_Name;
+
+
+-- 4) List the employee details along with the branch name using natural join.
+SELECT
+    *
+FROM
+    employee_master
+NATURAL JOIN
+    branch_master
+ORDER BY
+    emp_no;
+
+
+-- 5) Find the employee who works at Vadgaon branch with salaries more than 10000
+-- and list the employee names with the streets and city they live in.
+SELECT
+    E.e_name AS Employee_Name,
+    A.street,
+    A.city AS Employee_City
+FROM
+    employee_master E
+JOIN
+    branch_master B ON E.branch_id = B.branch_id
+JOIN
+    emp_address_details A ON E.emp_no = A.emp_id
+WHERE
+    B.bname = 'Vadgaon' AND E.salary > 10000.00;
+
+
+-- 6) Create a view which will show the avg salary and the total salary at each branch.
+CREATE VIEW branch_salary_summary AS
+SELECT
+    B.bname AS Branch_Name,
+    COUNT(E.emp_no) AS Total_Employees,
+    AVG(E.salary) AS Average_Salary,
+    SUM(E.salary) AS Total_Salary_Expenditure
+FROM
+    employee_master E
+INNER JOIN
+    branch_master B ON E.branch_id = B.branch_id
+GROUP BY
+    B.bname;
+
+-- Query the created view to verify
+SELECT * FROM branch_salary_summary;

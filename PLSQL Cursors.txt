@@ -1,0 +1,72 @@
+CREATE DATABASE class; 
+USE class;
+
+CREATE TABLE O_RollCall (
+    roll_no INT(3),
+    name VARCHAR(20)
+);
+
+CREATE TABLE N_RollCall (
+    roll_no INT(3),
+    name VARCHAR(20)
+);
+
+INSERT INTO O_RollCall VALUES (1,'Himanshu');
+INSERT INTO O_RollCall VALUES (2,'Ram');
+INSERT INTO O_RollCall VALUES (3,'Soham');
+INSERT INTO O_RollCall VALUES (5,'Mohan');
+INSERT INTO O_RollCall VALUES (6,'Om');
+INSERT INTO O_RollCall VALUES (9,'Yash');
+INSERT INTO O_RollCall VALUES (11,'Mayur');
+
+DELIMITER //
+
+CREATE PROCEDURE cursor_proc_p2 (IN r1 INT) -- Parameterized procedure
+BEGIN
+    DECLARE r2 INT;                      -- Variable to hold roll_no from cursor
+    DECLARE exit_loop BOOLEAN DEFAULT FALSE; -- Loop control flag
+
+    -- Declare the cursor: Selects roll_no from O_RollCall > r1 (parameter)
+    DECLARE c1 CURSOR FOR 
+        SELECT roll_no 
+        FROM O_RollCall
+        WHERE roll_no > r1; --
+
+    -- Declare a handler: If the cursor reaches the end (NOT FOUND), set exit_loop to TRUE
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET exit_loop = TRUE; --
+
+    -- Open the cursor (allocates memory and prepares for fetching)
+    OPEN c1; --
+
+    -- Start the loop to fetch rows one by one
+    e_loop: LOOP --
+        -- Fetch the next row's roll_no into variable r2
+        FETCH c1 INTO r2; --
+
+        -- Check if the record already exists in N_RollCall
+        IF NOT EXISTS (SELECT * FROM N_RollCall WHERE roll_no = r2) THEN --
+            -- If not exists, insert the full record from O_RollCall into N_RollCall
+            INSERT INTO N_RollCall 
+            SELECT * FROM O_RollCall WHERE roll_no = r2; --
+        END IF;
+
+        -- Check if the handler set the exit_loop flag (end of cursor data)
+        IF exit_loop THEN --
+            CLOSE c1;     -- Release cursor memory
+            LEAVE e_loop; -- Exit the loop
+        END IF;
+    END LOOP e_loop;
+
+END //
+
+DELIMITER ;
+
+SELECT * FROM O_RollCall; 
+SELECT * FROM N_RollCall; 
+
+CALL cursor_proc_p2(5); --
+SELECT * FROM N_RollCall; 
+
+CALL cursor_proc_p2(3); --
+SELECT * FROM N_RollCall; 
+

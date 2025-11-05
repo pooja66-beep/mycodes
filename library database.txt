@@ -1,0 +1,162 @@
+-- ==============================================================================
+-- 1. TABLE CREATION
+-- ==============================================================================
+
+-- a. Library table (The main inventory)
+CREATE TABLE Library (
+    B_id SERIAL PRIMARY KEY,
+    Title VARCHAR(255) NOT NULL,
+    Edition VARCHAR(50),
+    no_of_copies INTEGER NOT NULL CHECK (no_of_copies >= 0)
+);
+
+-- b. Library_audit table (For tracking inventory changes)
+CREATE TABLE Library_audit (
+    audit_id SERIAL PRIMARY KEY,
+    B_id INTEGER,
+    Title VARCHAR(255),
+    Edition VARCHAR(50),
+    no_of_copies_before INTEGER,
+    no_of_copies_after INTEGER,
+    date_of_mod TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    type_of_operation VARCHAR(50), -- e.g., 'INVENTORY_ADJUSTMENT'
+    user_who_performed_the_operation TEXT
+);
+
+-- c. Transaction table (Records issues and returns)
+CREATE TABLE Transaction (
+    Transaction_id SERIAL PRIMARY KEY,
+    Book_id INTEGER REFERENCES Library(B_id) NOT NULL,
+    Sid VARCHAR(50) NOT NULL,
+    Issue_or_return VARCHAR(10) NOT NULL CHECK (Issue_or_return IN ('Issue', 'Return')),
+    no_of_copies_issued_or_return INTEGER NOT NULL CHECK (no_of_copies_issued_or_return > 0),
+    transaction_date TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- ==============================================================================
+-- 2. TRIGGER IMPLEMENTATION
+-- ==============================================================================
+
+-- ------------------------------------------------------------------------------
+-- TRIGGER 1: Check availability before issuing (Goal 1: Conditional Issue)
+-- Runs BEFORE a record is INSERTED into the Transaction table.
+-- ------------------------------------------------------------------------------
+
+-- Function to check and potentially adjust the number of books being issued
+CREATE OR REPLACE FUNCTION check_issue_availability_func()
+RETURNS TRIGGER AS $$
+DECLARE
+    available_copies INTEGER;
+BEGIN
+    -- Only run this logic if the transaction is an 'Issue'
+    IF NEW.Issue_or_return = 'Issue' THEN
+
+        -- Get the current number of copies from the Library table
+        SELECT no_of_copies INTO available_copies
+        FROM Library
+        WHERE B_id = NEW.Book_id
+        FOR UPDATE; -- Lock the row to prevent race conditions during check and update
+
+        -- Case 1: If requested copies exceed available copies
+        IF NEW.no_of_copies_issued_or_return > available_copies THEN
+            -- Adjust the transaction quantity to the maximum available
+            NEW.no_of_copies_issued_or_return := available_copies;
+            
+            -- If adjusted quantity is 0, we prevent the issue (or record it as 0)
+            IF NEW.no_of_copies_issued_or_return = 0 THEN
+                -- Optionally, raise a notice that the book is out of stock
+                RAISE NOTICE 'Book ID % is currently out of stock.', NEW.Book_id;
+                RETURN NULL; -- Abort the transaction insertion if 0 copies can be issued
+            ELSE
+                -- Raise a notice that the quantity was adjusted
+                RAISE NOTICE 'Requested quantity for Book ID % was adjusted to % (maximum available).',
+                    NEW.Book_id, NEW.no_of_copies_issued_or_return;
+            END IF;
+        END IF;
+
+    END IF;
+
+    -- Return the NEW row (potentially modified quantity) to be inserted
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger definition for the check_issue_availability_func
+CREATE TRIGGER trg_check_issue_availability
+BEFORE INSERT ON Transaction
+FOR EACH ROW
+EXECUTE FUNCTION check_issue_availability_func();
+
+
+-- ------------------------------------------------------------------------------
+-- TRIGGER 2: Update the number of copies in the Library table (Goal 2: Update Inventory)
+-- Runs AFTER a record is successfully INSERTED into the Transaction table.
+-- ------------------------------------------------------------------------------
+
+-- Function to update the Library inventory based on the transaction
+CREATE OR REPLACE FUNCTION update_library_copies_func()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.Issue_or_return = 'Issue' THEN
+        -- Decrease the number of copies for an 'Issue' operation
+        UPDATE Library
+        SET no_of_copies = no_of_copies - NEW.no_of_copies_issued_or_return
+        WHERE B_id = NEW.Book_id;
+    ELSIF NEW.Issue_or_return = 'Return' THEN
+        -- Increase the number of copies for a 'Return' operation
+        UPDATE Library
+        SET no_of_copies = no_of_copies + NEW.no_of_copies_issued_or_return
+        WHERE B_id = NEW.Book_id;
+    END IF;
+
+    RETURN NULL; -- AFTER triggers must return NULL
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger definition for the update_library_copies_func
+CREATE TRIGGER trg_update_library_copies
+AFTER INSERT ON Transaction
+FOR EACH ROW
+EXECUTE FUNCTION update_library_copies_func();
+
+-- ------------------------------------------------------------------------------
+-- BONUS TRIGGER 3: Audit Library changes
+-- Runs AFTER the Library table is UPDATED by Trigger 2.
+-- ------------------------------------------------------------------------------
+
+-- Function to record the changes into the audit table
+CREATE OR REPLACE FUNCTION audit_library_changes_func()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Check if the number of copies actually changed
+    IF OLD.no_of_copies IS DISTINCT FROM NEW.no_of_copies THEN
+        INSERT INTO Library_audit (
+            B_id,
+            Title,
+            Edition,
+            no_of_copies_before,
+            no_of_copies_after,
+            type_of_operation,
+            user_who_performed_the_operation
+        )
+        VALUES (
+            NEW.B_id,
+            NEW.Title,
+            NEW.Edition,
+            OLD.no_of_copies,
+            NEW.no_of_copies,
+            'INVENTORY_ADJUSTMENT (TRG)', -- Indicates the change was initiated by the transaction trigger
+            CURRENT_USER
+        );
+    END IF;
+
+    RETURN NULL; -- AFTER triggers must return NULL
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger definition for the audit_library_changes_func
+CREATE TRIGGER trg_audit_library_changes
+AFTER UPDATE ON Library
+FOR EACH ROW
+EXECUTE FUNCTION audit_library_changes_func();

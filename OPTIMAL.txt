@@ -1,0 +1,89 @@
+#include <iostream>
+#include <vector>
+#include <unordered_set>
+using namespace std;
+
+int main() {
+    int frames, n;
+    cout << "Enter number of frames: ";
+    cin >> frames;
+
+    cout << "Enter number of references: ";
+    cin >> n;
+
+    vector<int> ref(n);
+    cout << "Enter reference string: ";
+    for (int i = 0; i < n; i++) cin >> ref[i];
+
+    unordered_set<int> memory;   
+    int pageFaults = 0, pageHits=0;
+
+   
+    for (int i = 0; i < n; i++) {
+        int page = ref[i];
+        cout << "\nStep " << i + 1 << ": Page " << page << " : ";
+
+     
+        if (memory.find(page) != memory.end()) {
+            cout << "Page Hit ";
+            cout<<"\nFrames: ";
+            for (int p : memory) cout << p << " ";
+            continue;
+        }
+
+      
+        pageFaults++;
+        cout << "Page Fault | ";
+
+    
+        if (memory.size() < frames) {
+            memory.insert(page);
+            cout << "Inserted ";
+            cout<<"\nFrames: ";
+            for (int p : memory) cout << p << " ";
+        }
+        else {
+            
+            int farthest = -1, replacePage = -1;
+
+            for (int p : memory) {
+                int nextUse = -1;
+                for (int j = i + 1; j < n; j++) {
+                    if (ref[j] == p) {
+                        nextUse = j;
+                        break;
+                    }
+                }
+
+            
+                if (nextUse == -1) {
+                    replacePage = p;
+                    break;
+                }
+
+           
+                if (nextUse > farthest) {
+                    farthest = nextUse;
+                    replacePage = p;
+                }
+            }
+
+            memory.erase(replacePage);
+            memory.insert(page);
+            cout << "Replaced " << replacePage << " with " << page;
+            cout<<"\nFrames: ";
+            for (int p : memory) cout << p << " ";
+
+        }
+    }
+
+    cout << "\n\nTotal Page Faults: " << pageFaults << endl;
+    cout << "Total Page Hits: " << pageHits << endl;
+    
+    float hitRatio = (float)pageHits / n * 100;
+    float faultRatio = (float)pageFaults / n * 100;
+
+    cout << "Hit Ratio: " << hitRatio << "%" << endl;
+    cout << "Fault Ratio: " << faultRatio << "%" << endl;
+    return 0;
+}

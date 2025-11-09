@@ -1,0 +1,74 @@
+#include <iostream>
+#include <list>
+#include <unordered_set>
+using namespace std;
+
+int main() {
+    int frames, n;
+    
+    cout << "Enter number of frames: ";
+    cin >> frames;
+
+    cout << "Enter number of references: ";
+    cin >> n;
+
+    int ref[n];
+    cout << "Enter the reference string: ";
+    for (int i = 0; i < n; i++) {
+        cin >> ref[i];
+    }
+
+    list<int> lruList;            
+    unordered_set<int> memory;    
+    int pageFaults = 0, pageHits = 0;
+
+    cout << "\n--- LRU Page Replacement ---\n";
+
+    for (int i = 0; i < n; i++) {
+        int page = ref[i];
+        cout << "\nStep " << i + 1 << ": Page " << page << " : ";
+
+        
+        if (memory.find(page) == memory.end()) {
+            pageFaults++;
+
+            // If memory is full, remove the least recently used page
+            if ((int)memory.size() == frames) {
+                int lru = lruList.front();
+                lruList.pop_front();
+                memory.erase(lru);
+                cout << "Replaced page " << lru << " with page " << page << ". (Page Fault)";
+            } else {
+                cout << "Inserted page " << page << ". (Page Fault)";
+            }
+
+            memory.insert(page);
+            lruList.push_back(page);
+        }
+        else {
+          
+            pageHits++;
+            cout << "Page " << page << " already in memory. (Page Hit)";
+
+           
+            lruList.remove(page);
+            lruList.push_back(page);
+        }
+
+      
+        cout << "\nFrames: ";
+        for (int p : lruList)
+            cout << p << " ";
+    }
+
+    cout << "\n\nTotal Page Faults: " << pageFaults;
+    cout << "\nTotal Page Hits: " << pageHits;
+
+    float hitRatio = (float)pageHits / n * 100;
+    float faultRatio = (float)pageFaults / n * 100;
+
+    cout << "\nHit Ratio: " << hitRatio << "%";
+    cout << "\nFault Ratio: " << faultRatio << "%\n";
+
+    return 0;
+}

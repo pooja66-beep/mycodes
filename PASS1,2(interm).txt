@@ -1,0 +1,83 @@
+#include <iostream>
+#include <string>
+#include <map>
+using namespace std;
+
+int main() {
+    cout << "===== TWO PASS ASSEMBLER SIMULATION =====\n";
+
+    // --- Sample Assembly Code ---
+    string label[8]  = {"-", "-", "-", "-", "A", "B", "C", "-"};
+    string opcode[8] = {"START", "MOVER", "ADD", "MOVEM", "DC", "DC", "DC", "END"};
+    string operand[8]= {"100", "A", "B", "C", "5", "1", "2", "-"};
+
+    int LC = 0;                     // Location Counter
+    map<string,int> symtab;         // Symbol Table
+
+    // ---------- PASS 1 ----------
+    cout << "\n=== PASS 1: BUILDING SYMBOL TABLE ===\n";
+    for (int i = 0; i < 8; i++) {
+        if (opcode[i] == "START") {
+            LC = stoi(operand[i]);  // Initialize location counter
+            continue;
+        }
+        if (opcode[i] == "END") break;
+
+        if (label[i] != "-") {
+            symtab[label[i]] = LC;  // Add symbol to table
+        }
+
+        LC++;                       // Increment LC
+    }
+
+    cout << "\nSymbol Table:\n";
+    cout << "Symbol\tAddress\n";
+    for (auto s : symtab)
+        cout << s.first << "\t" << s.second << endl;
+
+    // ---------- INTERMEDIATE CODE (after Pass 1) ----------
+    cout << "\n=== INTERMEDIATE CODE (Pass 1 Output) ===\n";
+    LC = 100; // reset LC to starting address
+    for (int i = 0; i < 8; i++) {
+        if (opcode[i] == "START")
+            cout << "(AD,01)\t(C," << operand[i] << ")\n";
+        else if (opcode[i] == "MOVER")
+            cout << "(IS,04)\t(R,01)\t(S," << symtab["A"] << ")\n";
+        else if (opcode[i] == "ADD")
+            cout << "(IS,01)\t(R,01)\t(S," << symtab["B"] << ")\n";
+        else if (opcode[i] == "MOVEM")
+            cout << "(IS,05)\t(R,01)\t(S," << symtab["C"] << ")\n";
+        else if (opcode[i] == "DC")
+            cout << "(DL,01)\t(C," << operand[i] << ")\n";
+        else if (opcode[i] == "END")
+            cout << "(AD,02)\n";
+    }
+
+    // ---------- PASS 2 ----------
+    cout << "\n=== PASS 2: GENERATING OBJECT CODE ===\n";
+    LC = 100;
+    for (int i = 0; i < 8; i++) {
+        if (opcode[i] == "START" || opcode[i] == "END") continue;
+
+        string code;
+        if (opcode[i] == "MOVER") code = "04";
+        else if (opcode[i] == "ADD") code = "01";
+        else if (opcode[i] == "MOVEM") code = "05";
+        else if (opcode[i] == "DC") code = "DL01";
+        else code = "--";
+
+        string addr;
+        if (symtab.find(operand[i]) != symtab.end())
+            addr = to_string(symtab[operand[i]]);
+        else
+            addr = operand[i];
+
+        cout << LC << " : " << opcode[i] << " " << operand[i]
+             << "  -->  " << code << " " << addr << endl;
+
+        LC++;
+    }
+
+    cout << "\n=== PROGRAM COMPLETED SUCCESSFULLY ===\n";
+    return 0;
+}
